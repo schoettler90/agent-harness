@@ -1,9 +1,10 @@
-from dotenv import load_dotenv
 from typing import Any, Literal
-from loguru import logger
-from litellm import LiteLLM
 
-# Automatically drop unsupported parameters (like reasoning_effort or temperature) for the target provider
+from dotenv import load_dotenv
+from litellm import LiteLLM
+from loguru import logger
+
+# Drop unsupported params (e.g. reasoning_effort) for the target provider
 # litellm.drop_params = True
 
 

@@ -36,9 +36,7 @@ FilesystemConfig = Annotated[
     Discriminator("source"),
 ]
 
-_AnyFsConfig = (
-    LocalFilesystemConfig | S3FilesystemConfig | GoogleDriveFilesystemConfig
-)
+_AnyFsConfig = LocalFilesystemConfig | S3FilesystemConfig | GoogleDriveFilesystemConfig
 
 
 async def mount(config: _AnyFsConfig) -> Path:

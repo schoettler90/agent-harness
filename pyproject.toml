@@ -4,10 +4,13 @@ version = "0.1.0"
 description = "Provider-agnostic agent harness with FastAPI, LiteLLM, and pluggable tools"
 requires-python = ">=3.14"
 dependencies = [
+    "boto3>=1.43.5",
     "fastapi[standard]>=0.136.1",
-    "litellm>=1.83.14",
+    "google-api-python-client>=2.195.0",
+    "google-auth>=2.50.0",
+    "litellm>=1.84.0rc1",
     "loguru>=0.7.3",
-    "openai-agents>=0.10.5",
+    "openai-agents>=0.15.3",
     "python-dotenv>=1.2.2",
 ]
 

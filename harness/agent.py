@@ -12,6 +12,7 @@ from pydantic.dataclasses import dataclass
 from harness.filesystem import FilesystemConfig, cleanup, mount
 from harness.litellm_factory import LiteLLMFactory
 from harness.stream import HarnessEvent, from_agent_event
+from harness.tools import resolve_tools
 from src.utils import LoggerSetup
 
 logger = LoggerSetup("AgentLoop")
@@ -27,23 +28,22 @@ class AgentRunRequest:
     filesystem: FilesystemConfig | None = None
 
 
-def build_agent(req: AgentRunRequest, tool_objects: list[Any] | None = None) -> Agent:
-    model = LiteLLMFactory.resolve_model(req.model)
+def build_agent(request: AgentRunRequest, tool_objects: list[Any] | None = None) -> Agent:
+    model = LiteLLMFactory.resolve_model(request.model)
     return Agent(
         name="harness-agent",
-        instructions=req.system_prompt or "You are a helpful assistant.",
+        instructions=request.system_prompt or "You are a helpful assistant.",
         model=model,
         tools=tool_objects or [],
     )
 
 
-async def run_streamed(req: AgentRunRequest) -> AsyncIterator[HarnessEvent]:
-    from harness.tools import resolve_tools
+async def run_streamed(request: AgentRunRequest) -> AsyncIterator[HarnessEvent]:
 
     sandbox_dir: Path | None = None
     try:
-        if req.filesystem is not None:
-            sandbox_dir = await mount(req.filesystem)
+        if request.filesystem is not None:
+            sandbox_dir = await mount(request.filesystem)
             logger.info("Mounted sandbox at {dir}", dir=str(sandbox_dir))
 
         tool_kwargs = {"sandbox_dir": sandbox_dir} if sandbox_dir else {}
@@ -66,12 +66,14 @@ async def run_streamed(req: AgentRunRequest) -> AsyncIterator[HarnessEvent]:
             harness_event = from_agent_event(event)
             if harness_event is not None:
                 yield harness_event
+
     except Exception as e:
         logger.error("Agent run failed: {error}", error=e)
         yield HarnessEvent(
             event="error",
             data={"error": str(e), "type": type(e).__name__},
         )
+
     finally:
         yield HarnessEvent(event="done", data={})
         if sandbox_dir is not None:

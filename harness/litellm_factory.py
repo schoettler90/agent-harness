@@ -8,7 +8,6 @@ from loguru import logger
 # litellm.drop_params = True
 
 
-
 load_dotenv()
 Provider = Literal["openai", "gemini", "anthropic", "ollama", "deepseek", "auto"]
 
@@ -30,9 +29,7 @@ class LiteLLMFactory:
             return "anthropic"
         elif model.startswith("gemini"):
             return "gemini"
-        elif model.startswith("deepseek/") or (
-            "/" not in model and model.startswith("deepseek")
-        ):
+        elif model.startswith("deepseek/") or ("/" not in model and model.startswith("deepseek")):
             return "deepseek"
         elif model.startswith("ollama/") or (
             "/" not in model and model.startswith(("qwen", "llama", "mistral", "phi"))

@@ -12,8 +12,7 @@ def LoggerSetup(name: str) -> _base_logger.__class__:
         _base_logger.add(
             sys.stderr,
             format=(
-                "{time:YYYY-MM-DDTHH:mm:ss.SSSZ} | {level:<8} | "
-                "{extra[module]:<20} | {message}"
+                "{time:YYYY-MM-DDTHH:mm:ss.SSSZ} | {level:<8} | {extra[module]:<20} | {message}"
             ),
             level="DEBUG",
         )

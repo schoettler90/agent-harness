@@ -19,8 +19,7 @@ def make_file_search_tool(sandbox_dir: Path | None = None):
     @function_tool(
         name_override="file_search",
         description_override=(
-            "Search files by content pattern or list files"
-            " matching a glob in the sandbox."
+            "Search files by content pattern or list files matching a glob in the sandbox."
         ),
     )
     async def file_search(query: str, glob_filter: str = "*", max_results: int = 20) -> str:

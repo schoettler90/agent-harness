@@ -10,6 +10,7 @@ def register_tool(name: str) -> Callable:
     def decorator(func: Callable) -> Callable:
         TOOL_REGISTRY[name] = func
         return func
+
     return decorator
 
 

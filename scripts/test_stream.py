@@ -5,7 +5,6 @@ Usage:
     uv run python scripts/test_stream.py
 """
 
-
 import asyncio
 import json
 import sys
@@ -18,9 +17,7 @@ from harness.agent import AgentRunRequest, run_streamed  # noqa: E402
 
 async def main():
     prompt = (
-        " ".join(sys.argv[1:])
-        if len(sys.argv) > 1
-        else "Explain quantum computing in 2 sentences."
+        " ".join(sys.argv[1:]) if len(sys.argv) > 1 else "Explain quantum computing in 2 sentences."
     )
 
     req = AgentRunRequest(

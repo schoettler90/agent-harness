@@ -47,11 +47,93 @@ agent-harness/
 └── .env.example
 ```
 
+## Git Commits — Conventional Commits
+
+All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) standard:
+
+```
+<type>: <short description>
+```
+
+Allowed types:
+
+| Type | When to use |
+|------|-------------|
+| `feat` | New feature or capability |
+| `fix` | Bug fix |
+| `docs` | Documentation only changes |
+| `chore` | Maintenance, deps, tooling, config |
+| `refactor` | Code restructure with no behavior change |
+| `test` | Adding or updating tests |
+| `style` | Formatting, whitespace (no logic change) |
+| `perf` | Performance improvement |
+| `ci` | CI/CD pipeline changes |
+
+Examples:
+```
+feat: add web search tool with SSE streaming
+fix: handle empty tool output in HarnessEvent
+docs: update README with filesystem sources
+chore: add ruff to dev dependencies
+refactor: extract stream envelope into harness/stream.py
+test: add unit tests for LiteLLMFactory.resolve_model
+```
+
+## Logging — Loguru
+
+All logging must use **loguru** — never the stdlib `logging` module, `print()`, or any other logger.
+
+```python
+# Correct
+from loguru import logger
+
+logger.info("Agent loop started")
+logger.success("Run complete")
+logger.warning("Retrying tool call")
+logger.error("Tool failed: {error}", error=e)
+
+# Wrong — never use these
+import logging
+print("debug info")
+logging.getLogger(__name__).info(...)
+```
+
+Each module gets its own named sink via the shared `LoggerSetup` utility in `src/utils.py`:
+
+```python
+from src.utils import LoggerSetup
+logger = LoggerSetup("ModuleName")
+```
+
+## Data Modeling — Pydantic Dataclasses
+
+All data passed between layers (request bodies, tool inputs/outputs, stream events, filesystem configs) must be typed using **Pydantic dataclasses** — not plain `dict`, plain `@dataclass`, or `BaseModel`.
+
+```python
+# Correct
+from pydantic.dataclasses import dataclass
+
+@dataclass
+class RunRequest:
+    prompt: str
+    model: str
+    tools: list[str]
+
+# Wrong — never use these for inter-layer data
+from dataclasses import dataclass  # plain dataclass, no validation
+class RunRequest(BaseModel): ...   # BaseModel is fine for DB/API schemas but not preferred here
+def run(data: dict): ...           # untyped dict
+```
+
+Use `pydantic.dataclasses.dataclass` everywhere so that field validation, serialization (`.model_dump()`, `.model_dump_json()`), and JSON schema generation are all available automatically.
+
 ## Streaming Event Envelope
 
 Every event pushed over SSE must conform to this schema. No tool is allowed to emit raw output — all output goes through the envelope.
 
 ```python
+from pydantic.dataclasses import dataclass
+
 @dataclass
 class HarnessEvent:
     event: str       # "tool_called" | "tool_output" | "message_delta" | "message_done" | "error" | "done"
@@ -71,14 +153,21 @@ data: {"tool": "web_search", "result": [...], "timestamp": "..."}
 
 ## Tool Interface Contract
 
-Each tool module must expose a single factory function:
+Each tool module must expose a single factory function. Tool config is always a typed Pydantic dataclass — never a raw `dict`.
 
 ```python
-def make_tool(config: dict) -> FunctionTool | HostedMCPTool | MCPServer:
+from pydantic.dataclasses import dataclass
+
+@dataclass
+class WebSearchConfig:
+    max_results: int = 5
+    provider: str = "openai"
+
+def make_tool(config: WebSearchConfig) -> FunctionTool | HostedMCPTool | MCPServer:
     ...
 ```
 
-Tools are registered in `harness/agent.py` and receive `config` from the run request.
+Tools are registered in `harness/agent.py` and receive their config dataclass from the run request.
 
 ## FastAPI Conventions
 

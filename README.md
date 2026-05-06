@@ -42,17 +42,32 @@ A modular, provider-agnostic agent harness built on the OpenAI Agents SDK patter
 | **Skills** | `SKILL.md`-based reusable workflow packages |
 | **Remote MCP** | Hosted MCP endpoints (HostedMCPTool pattern) |
 
+## Data Modeling
+
+All inter-layer data (requests, tool configs, stream events) is typed with **Pydantic dataclasses** (`pydantic.dataclasses.dataclass`). This gives automatic field validation, `.model_dump_json()` serialization, and JSON schema generation without switching between `BaseModel` and plain dataclasses.
+
 ## Streaming Event Envelope
 
-Every tool call and agent event is normalized into a single JSON schema before being pushed over SSE:
+Every tool call and agent event is normalized into a single Pydantic dataclass before being pushed over SSE — no raw dicts cross module boundaries:
 
-```json
-{
-  "event": "tool_called | tool_output | message_delta | message_done | error | done",
-  "tool": "web_search | file_search | bash | mcp | skill | null",
-  "data": { ... },
-  "timestamp": "ISO-8601"
-}
+```python
+from pydantic.dataclasses import dataclass
+
+@dataclass
+class HarnessEvent:
+    event: str       # tool_called | tool_output | message_delta | message_done | error | done
+    tool: str | None # web_search | file_search | bash | mcp | skill | None
+    data: dict       # tool-specific payload
+    timestamp: str   # ISO-8601
+```
+
+Wire format (SSE):
+```
+event: tool_called
+data: {"tool": "web_search", "query": "...", "timestamp": "2026-05-07T00:00:00Z"}
+
+event: tool_output
+data: {"tool": "web_search", "result": [...], "timestamp": "2026-05-07T00:00:00Z"}
 ```
 
 ## Filesystem Sources

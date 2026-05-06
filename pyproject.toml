@@ -3,4 +3,15 @@ name = "agent-harness"
 version = "0.1.0"
 description = "Provider-agnostic agent harness with FastAPI, LiteLLM, and pluggable tools"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "fastapi[standard]>=0.136.1",
+    "litellm>=1.83.14",
+    "loguru>=0.7.3",
+    "openai-agents>=0.10.5",
+    "python-dotenv>=1.2.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.12",
+]

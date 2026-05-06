@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 
 from agents import function_tool

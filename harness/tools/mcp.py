@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from agents.mcp import MCPServerStdio, MCPServerStreamableHttp
 from pydantic import Field
 from pydantic.dataclasses import dataclass

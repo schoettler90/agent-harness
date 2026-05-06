@@ -5,7 +5,6 @@ Usage:
     uv run python scripts/test_stream.py
 """
 
-from __future__ import annotations
 
 import asyncio
 import json

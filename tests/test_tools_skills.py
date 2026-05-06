@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from harness.tools.skills import SkillManifest, _parse_skill_manifest, discover_skills
 
 

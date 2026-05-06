@@ -47,19 +47,19 @@ async def run_streamed(request: AgentRunRequest) -> AsyncIterator[HarnessEvent]:
             logger.info("Mounted sandbox at {dir}", dir=str(sandbox_dir))
 
         tool_kwargs = {"sandbox_dir": sandbox_dir} if sandbox_dir else {}
-        tool_objects = resolve_tools(req.tools, **tool_kwargs)
-        agent = build_agent(req, tool_objects=tool_objects)
+        tool_objects = resolve_tools(request.tools, **tool_kwargs)
+        agent = build_agent(request, tool_objects=tool_objects)
 
-        logger.info("Starting agent run with model={model}", model=req.model)
+        logger.info("Starting agent run with model={model}", model=request.model)
 
         result = Runner.run_streamed(
             agent,
-            input=req.prompt,
+            input=request.prompt,
             run_config=RunConfig(
                 model_provider=LitellmProvider(),
                 tracing_disabled=True,
             ),
-            max_turns=req.max_turns,
+            max_turns=request.max_turns,
         )
 
         async for event in result.stream_events():

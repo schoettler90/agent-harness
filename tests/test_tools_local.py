@@ -65,7 +65,8 @@ async def test_filesystem_write_read_list(workdir: Path):
     assert (workdir / "hello.txt").read_text() == "hi there"
 
     read_result = await _invoke(by_name["read_file"], path="hello.txt")
-    assert read_result == "hi there"
+    assert "hi there" in read_result
+    assert read_result.startswith("1\t")
 
     listing = await _invoke(by_name["list_dir"], path=".")
     assert "hello.txt" in listing

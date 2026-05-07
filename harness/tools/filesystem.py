@@ -306,4 +306,26 @@ def make_filesystem_tools(filesystem_config: FilesystemConfig | None = None, **_
                 outputs.append(result.output)
         return "\n".join(outputs)
 
-    return [read_file, write_file, update_file, apply_patch]
+    @function_tool(
+        name_override="list_dir",
+        description_override=(
+            "List entries in a directory under the agent working directory. "
+            "Returns one entry per line; directories are suffixed with '/'."
+        ),
+    )
+    async def list_dir(path: str = ".") -> str:
+        """List entries in a directory.
+
+        Args:
+            path: Directory path resolved against the agent working directory.
+        """
+        try:
+            target = _resolve_safe(workdir, path)
+            if not target.is_dir():
+                return f"Error: {path!r} is not a directory"
+            entries = sorted(target.iterdir(), key=lambda p: p.name)
+            return "\n".join(f"{p.name}/" if p.is_dir() else p.name for p in entries)
+        except Exception as e:
+            return f"Error: {e}"
+
+    return [read_file, write_file, update_file, apply_patch, list_dir]

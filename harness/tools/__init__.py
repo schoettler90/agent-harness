@@ -17,12 +17,7 @@ def register_tool(name: str) -> Callable:
 def _ensure_registered() -> None:
     if TOOL_REGISTRY:
         return
-    import harness.tools.bash  # noqa: F401
-    import harness.tools.file_search  # noqa: F401
     import harness.tools.web_search  # noqa: F401
-    from harness.tools.skills import make_skill_tools
-
-    TOOL_REGISTRY["skills"] = make_skill_tools
 
 
 def resolve_tools(names: list[str], **kwargs: Any) -> list[Tool]:

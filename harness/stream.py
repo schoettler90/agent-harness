@@ -21,7 +21,7 @@ EventType = Literal[
     "done",
 ]
 
-ToolName = Literal["web_search", "file_search", "bash", "mcp", "skill"]
+ToolName = Literal["web_search", "file_search", "bash", "mcp", "skill", "memory"]
 
 
 def _now_iso() -> str:
@@ -48,14 +48,20 @@ def to_sse(event: HarnessEvent) -> str:
 def _classify_tool(name: str) -> ToolName | None:
     if not name:
         return None
-    if "bash" in name or "shell" in name:
+    if name in {"exec_command", "write_stdin"} or "bash" in name or "shell" in name:
         return "bash"
-    if "file_search" in name or "search_file" in name:
+    if (
+        name in {"apply_patch", "view_image"}
+        or "file_search" in name
+        or "search_file" in name
+    ):
         return "file_search"
     if "web_search" in name:
         return "web_search"
     if "skill" in name:
         return "skill"
+    if "memory" in name:
+        return "memory"
     if "mcp" in name:
         return "mcp"
     return None

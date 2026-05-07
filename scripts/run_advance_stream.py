@@ -28,7 +28,7 @@ async def main():
     default_prompt = (
         "Use the shell to list the working directory. If any file looks like it "
         "hints at containing code, read it and show its contents to the user. "
-        "Then append the one-liner 'agent was here' to that same file."
+        "Add in conversation.md another one-liner advancing a conversation."
     )
     prompt = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else default_prompt
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from agents import function_tool
+from agents import FunctionTool, function_tool
 from agents.apply_diff import apply_diff
 from agents.editor import ApplyPatchOperation, ApplyPatchResult
 from pydantic.dataclasses import dataclass
@@ -93,7 +93,7 @@ def _parse_patch(raw: str) -> list[ApplyPatchOperation]:
     while i < len(lines) - 1:
         line = lines[i]
         if line.startswith(_ADD):
-            path = line[len(_ADD) :].strip()
+            path = line[len(_ADD):].strip()
             i += 1
             diff_lines: list[str] = []
             while i < len(lines) - 1 and not _is_header(lines[i]):
@@ -105,15 +105,15 @@ def _parse_patch(raw: str) -> list[ApplyPatchOperation]:
                 )
             )
         elif line.startswith(_DEL):
-            path = line[len(_DEL) :].strip()
+            path = line[len(_DEL):].strip()
             i += 1
             ops.append(ApplyPatchOperation(type="delete_file", path=path))
         elif line.startswith(_UPD):
-            path = line[len(_UPD) :].strip()
+            path = line[len(_UPD):].strip()
             i += 1
             move_to: str | None = None
             if i < len(lines) - 1 and lines[i].startswith(_MOVE):
-                move_to = lines[i][len(_MOVE) :].strip()
+                move_to = lines[i][len(_MOVE):].strip()
                 i += 1
             diff_lines = []
             while i < len(lines) - 1 and not _is_header(lines[i]):
@@ -137,28 +137,28 @@ def _is_header(line: str) -> bool:
 
 
 @register_tool("filesystem")
-def make_filesystem_tools(filesystem_config: FilesystemConfig | None = None, **_: object):
+def make_filesystem_tools(
+    filesystem_config: FilesystemConfig | None = None, **_: object
+) -> list[FunctionTool]:
     root = filesystem_config.root if filesystem_config else settings.agent_workdir
     workdir = Path(root).resolve()
     editor = LocalApplyPatchEditor(workdir)
 
     @function_tool(
-        name_override="read_file",
         description_override=(
-            "Reads a file from the local filesystem. You can access any file directly by using "
-            "this tool. Assume this tool is able to read all files on the machine. If the User "
-            "provides a path to a file assume that path is valid. It is okay to read a file "
-            "that does not exist; an error will be returned.\n\n"
+            "Reads a file from the agent working directory. You can access any file directly"
+            " by using this tool. If a path to a file is provided, assume that path is valid."
+            " It is okay to read a file that does not exist; an error will be returned.\n\n"
             "Usage:\n"
             "- The path parameter is resolved against the agent working directory.\n"
             "- By default, it reads up to 2000 lines starting from the beginning of the file.\n"
-            "- When you already know which part of the file you need, only read that part. "
-            "This can be important for larger files.\n"
+            "- When you already know which part of the file you need, only read that part."
+            " This can be important for larger files.\n"
             "- Results are returned using cat -n format, with line numbers starting at 1.\n"
-            "- If you read a file that exists but has empty contents you will receive a system "
-            "reminder warning in place of file contents.\n"
-            "- Do NOT re-read a file you just edited to verify — write_file/update_file would "
-            "have errored if the change failed."
+            "- If you read a file that exists but has empty contents you will receive a"
+            " warning in place of file contents.\n"
+            "- Do NOT re-read a file you just edited to verify — write_file/update_file"
+            " would have errored if the change failed."
         ),
     )
     async def read_file(path: str, offset: int = 0, limit: int = 2000) -> str:
@@ -179,24 +179,25 @@ def make_filesystem_tools(filesystem_config: FilesystemConfig | None = None, **_
             lines = text.splitlines()
             chunk = lines[offset : offset + limit]
             width = len(str(offset + len(chunk)))
-            return "\n".join(f"{(offset + i + 1):>{width}}\t{line}" for i, line in enumerate(chunk))
+            return "\n".join(
+                f"{(offset + i + 1):>{width}}\t{line}" for i, line in enumerate(chunk)
+            )
         except Exception as e:
             return f"Error: {e}"
 
     @function_tool(
-        name_override="write_file",
         description_override=(
-            "Writes a file to the local filesystem.\n\n"
+            "Writes a file to the agent working directory.\n\n"
             "Usage:\n"
             "- This tool will overwrite the existing file if there is one at the provided path.\n"
-            "- If this is an existing file, you MUST use the read_file tool first to read the "
-            "file's contents. This tool will fail if you did not read the file first.\n"
-            "- Prefer the update_file tool for modifying existing files — it only sends the "
-            "diff. Only use this tool to create new files or for complete rewrites.\n"
-            "- NEVER create documentation files (*.md) or README files unless explicitly "
-            "requested by the User.\n"
-            "- Only use emojis if the user explicitly requests it. Avoid writing emojis to "
-            "files unless asked."
+            "- If this is an existing file, you MUST use the read_file tool first to read the"
+            " file's contents. This tool will fail if you did not read the file first.\n"
+            "- Prefer the update_file tool for modifying existing files — it only sends the"
+            " diff. Only use this tool to create new files or for complete rewrites.\n"
+            "- NEVER create documentation files (*.md) or README files unless explicitly"
+            " requested.\n"
+            "- Only use emojis if the user explicitly requests it."
+            " Avoid writing emojis to files unless asked."
         ),
     )
     async def write_file(path: str, content: str) -> str:
@@ -210,26 +211,25 @@ def make_filesystem_tools(filesystem_config: FilesystemConfig | None = None, **_
             return f"Error: {e}"
 
     @function_tool(
-        name_override="update_file",
         description_override=(
             "Performs exact string replacements in files.\n\n"
             "Usage:\n"
-            "- You must use the read_file tool at least once in the conversation before "
-            "editing. This tool will error if you attempt an edit without reading the file.\n"
-            "- When editing text from read_file output, ensure you preserve the exact "
-            "indentation (tabs/spaces) as it appears AFTER the line number prefix. The line "
-            "number prefix format is: line number + tab. Everything after that is the actual "
-            "file content to match. Never include any part of the line number prefix in the "
-            "old_string or new_string.\n"
-            "- ALWAYS prefer editing existing files. NEVER write new files unless explicitly "
-            "required.\n"
-            "- Only use emojis if the user explicitly requests it. Avoid adding emojis to "
-            "files unless asked.\n"
-            "- The edit will FAIL if old_string is not unique in the file. Either provide a "
-            "larger string with more surrounding context to make it unique or use replace_all "
-            "to change every instance of old_string.\n"
-            "- Use replace_all for replacing and renaming strings across the file. This "
-            "parameter is useful if you want to rename a variable for instance."
+            "- You must use the read_file tool at least once in the conversation before"
+            " editing. This tool will error if you attempt an edit without reading the file.\n"
+            "- When editing text from read_file output, ensure you preserve the exact"
+            " indentation (tabs/spaces) as it appears AFTER the line number prefix."
+            " The line number prefix format is: line number + tab."
+            " Everything after that is the actual file content to match."
+            " Never include any part of the line number prefix in old_string or new_string.\n"
+            "- ALWAYS prefer editing existing files. NEVER write new files unless explicitly"
+            " required.\n"
+            "- Only use emojis if the user explicitly requests it."
+            " Avoid adding emojis to files unless asked.\n"
+            "- The edit will FAIL if old_string is not unique in the file. Either provide a"
+            " larger string with more surrounding context to make it unique, or use replace_all"
+            " to change every instance of old_string.\n"
+            "- Use replace_all for replacing and renaming strings across the file."
+            " This parameter is useful if you want to rename a variable for instance."
         ),
     )
     async def update_file(
@@ -270,7 +270,6 @@ def make_filesystem_tools(filesystem_config: FilesystemConfig | None = None, **_
             return f"Error: {e}"
 
     @function_tool(
-        name_override="apply_patch",
         description_override=(
             "Edit files using the v4a patch format.\n\n"
             "The input must be wrapped in '*** Begin Patch' / '*** End Patch'. "
@@ -307,24 +306,35 @@ def make_filesystem_tools(filesystem_config: FilesystemConfig | None = None, **_
         return "\n".join(outputs)
 
     @function_tool(
-        name_override="list_dir",
         description_override=(
-            "List entries in a directory under the agent working directory. "
-            "Returns one entry per line; directories are suffixed with '/'."
+            "Fast file pattern matching tool that works with any codebase size.\n"
+            "Supports glob patterns like '**/*.js' or 'src/**/*.ts'.\n"
+            "Returns matching file paths sorted by modification time.\n"
+            "Use this tool when you need to find files by name patterns.\n\n"
+            "Usage:\n"
+            "- path defaults to the agent working directory if omitted.\n"
+            "- pattern supports '**' for recursive matching.\n"
+            "- Returns one path per line; directories are suffixed with '/'."
         ),
     )
-    async def list_dir(path: str = ".") -> str:
-        """List entries in a directory.
+    async def list_dir(path: str = ".", pattern: str = "*") -> str:
+        """List entries matching a glob pattern under a directory.
 
         Args:
             path: Directory path resolved against the agent working directory.
+            pattern: Glob pattern to match (default '*' lists all direct entries).
         """
         try:
             target = _resolve_safe(workdir, path)
             if not target.is_dir():
                 return f"Error: {path!r} is not a directory"
-            entries = sorted(target.iterdir(), key=lambda p: p.name)
-            return "\n".join(f"{p.name}/" if p.is_dir() else p.name for p in entries)
+            matches = sorted(target.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+            if not matches:
+                return "No entries found."
+            return "\n".join(
+                (str(p.relative_to(target)) + "/") if p.is_dir() else str(p.relative_to(target))
+                for p in matches
+            )
         except Exception as e:
             return f"Error: {e}"
 

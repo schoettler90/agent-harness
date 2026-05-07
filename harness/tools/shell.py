@@ -58,11 +58,14 @@ def make_shell_tool(shell_config: ShellConfig | None = None, **_: object):
                 return f"Error: command timed out after {timeout_s}s"
             stdout = stdout_b.decode(errors="replace")
             stderr = stderr_b.decode(errors="replace")
-            if proc.returncode == 0:
-                return stdout if stdout else stderr
-            parts = [s for s in (stdout, stderr) if s]
-            body = "\n".join(parts) if parts else ""
-            return f"{body}\n(exit {proc.returncode})" if body else f"(exit {proc.returncode})"
+            parts: list[str] = []
+            if stdout:
+                parts.append(stdout if stdout.endswith("\n") else stdout + "\n")
+            if stderr:
+                tail = stderr if stderr.endswith("\n") else stderr + "\n"
+                parts.append(f"stderr:\n{tail}")
+            parts.append(f"exit_code: {proc.returncode}")
+            return "".join(parts)
         except Exception as e:
             logger.error("shell failed: {e}", e=e)
             return f"Error executing command: {e}"

@@ -43,10 +43,15 @@ def test_to_sse_roundtrip():
 def test_classify_tool():
     assert _classify_tool("bash") == "bash"
     assert _classify_tool("shell_exec") == "bash"
+    assert _classify_tool("exec_command") == "bash"
+    assert _classify_tool("write_stdin") == "bash"
     assert _classify_tool("file_search") == "file_search"
+    assert _classify_tool("apply_patch") == "file_search"
+    assert _classify_tool("view_image") == "file_search"
     assert _classify_tool("web_search") == "web_search"
     assert _classify_tool("list_skills") == "skill"
     assert _classify_tool("read_skill") == "skill"
+    assert _classify_tool("memory_read") == "memory"
     assert _classify_tool("mcp_call") == "mcp"
     assert _classify_tool("") is None
     assert _classify_tool("unknown_tool") is None

@@ -1,85 +1,64 @@
 from pathlib import Path
 
 from agents import function_tool
-from pydantic.dataclasses import dataclass
+from agents.sandbox.capabilities.skills import LocalDirLazySkillSource
+from agents.sandbox.entries import LocalDir
 
+from harness.tools import register_tool
 from src.utils import LoggerSetup
 
 logger = LoggerSetup("SkillsTool")
 
-
-@dataclass
-class SkillManifest:
-    name: str
-    description: str
+DEFAULT_SKILLS_DIR = Path(__file__).resolve().parent.parent.parent / "skills"
+SKILLS_PATH = ".agents"  # virtual path label used by the SDK metadata
 
 
-def _parse_skill_manifest(path: Path) -> SkillManifest | None:
-    text = path.read_text(encoding="utf-8")
-    if not text.startswith("---"):
-        return None
-    try:
-        end = text.index("---", 3)
-    except ValueError:
-        return None
-    front_matter = text[3:end].strip()
-    data: dict[str, str] = {}
-    for line in front_matter.split("\n"):
-        if ":" in line:
-            key, _, val = line.partition(":")
-            data[key.strip()] = val.strip()
-    name = data.get("name", "")
-    description = data.get("description", "")
-    if not name:
-        return None
-    return SkillManifest(name=name, description=description)
+def _build_source(skills_dir: Path) -> LocalDirLazySkillSource:
+    return LocalDirLazySkillSource(source=LocalDir(src=skills_dir))
 
 
-def discover_skills(skills_dir: Path = Path("skills")) -> dict[str, SkillManifest]:
-    manifests: dict[str, SkillManifest] = {}
-    if not skills_dir.exists():
-        return manifests
-    for skill_dir in skills_dir.iterdir():
-        if not skill_dir.is_dir():
-            continue
-        skill_md = skill_dir / "SKILL.md"
-        if skill_md.exists():
-            manifest = _parse_skill_manifest(skill_md)
-            if manifest:
-                manifests[manifest.name] = manifest
-    return manifests
-
-
-def make_skill_tools(skills_dir: Path = Path("skills")):
-    manifests = discover_skills(skills_dir)
-    logger.info("Discovered {n} skills", n=len(manifests))
+@register_tool("skills")
+def make_skills_tools(skills_dir: Path | None = None, **_: object):
+    root = Path(skills_dir or DEFAULT_SKILLS_DIR).resolve()
+    source = _build_source(root)
 
     @function_tool(
         name_override="list_skills",
-        description_override="List all available skills with their descriptions.",
+        description_override=(
+            "List available skills with their names and descriptions "
+            "(parsed from SKILL.md frontmatter)."
+        ),
     )
     async def list_skills() -> str:
-        """List available skills."""
-        if not manifests:
-            return "No skills available."
-        lines = [f"- {name}: {m.description}" for name, m in manifests.items()]
-        return "\n".join(lines)
+        """List skill names and descriptions."""
+        metadata = source.list_skill_metadata(skills_path=SKILLS_PATH)
+        if not metadata:
+            return "(no skills)"
+        return "\n".join(f"- **{m.name}**: {m.description}" for m in metadata)
 
     @function_tool(
-        name_override="read_skill",
-        description_override="Read the full instructions for a skill by name.",
+        name_override="load_skill",
+        description_override="Load a skill's SKILL.md instructions by name.",
     )
-    async def read_skill(skill_name: str) -> str:
-        """Read the full SKILL.md instructions for a skill.
+    async def load_skill(name: str) -> str:
+        """Read the SKILL.md for a named skill.
 
         Args:
-            skill_name: The name of the skill to read
+            name: Skill name (matches frontmatter `name` or directory name).
         """
-        if skill_name not in manifests:
-            return f"Unknown skill: {skill_name!r}. Use list_skills to see available skills."
-        skill_path = skills_dir / skill_name / "SKILL.md"
-        if skill_path.exists():
-            return skill_path.read_text(encoding="utf-8")
-        return f"Skill file not found for {skill_name!r}"
+        matches = [
+            m
+            for m in source.list_skill_metadata(skills_path=SKILLS_PATH)
+            if m.name == name or m.path.name == name
+        ]
+        if not matches:
+            return f"Error: skill {name!r} not found"
+        if len(matches) > 1:
+            return f"Error: skill name {name!r} is ambiguous"
+        skill_dir = root / matches[0].path.name
+        skill_md = skill_dir / "SKILL.md"
+        if not skill_md.is_file():
+            return f"Error: SKILL.md missing for {name!r}"
+        return skill_md.read_text(encoding="utf-8")
 
-    return [list_skills, read_skill]
+    return [list_skills, load_skill]

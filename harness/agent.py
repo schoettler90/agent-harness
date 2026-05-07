@@ -1,7 +1,6 @@
 import sys
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any
 
 from agents import Agent, Runner
 from agents.extensions.models.litellm_provider import LitellmProvider
@@ -9,10 +8,10 @@ from agents.run_config import RunConfig
 from pydantic import Field
 from pydantic.dataclasses import dataclass
 
-from harness.filesystem import FilesystemConfig, cleanup, mount
 from harness.litellm_factory import LiteLLMFactory
 from harness.stream import HarnessEvent, from_agent_event
 from harness.tools import resolve_tools
+from src.settings import settings
 from src.utils import LoggerSetup
 
 logger = LoggerSetup("AgentLoop")
@@ -25,30 +24,29 @@ class AgentRunRequest:
     tools: list[str] = Field(default_factory=list)
     system_prompt: str | None = None
     max_turns: int = 10
-    filesystem: FilesystemConfig | None = None
+    mcp_config_path: Path | None = None
+    tool_configs: dict[str, object] = Field(default_factory=dict)
 
 
-def build_agent(request: AgentRunRequest, tool_objects: list[Any] | None = None) -> Agent:
-    model = LiteLLMFactory.resolve_model(request.model)
+def build_agent(request: AgentRunRequest) -> Agent:
+    config_path = request.mcp_config_path or settings.mcp_config_path
+    function_tools, mcp_servers = resolve_tools(
+        request.tools,
+        mcp_config_path=config_path,
+        **request.tool_configs,
+    )
     return Agent(
         name="harness-agent",
         instructions=request.system_prompt or "You are a helpful assistant.",
-        model=model,
-        tools=tool_objects or [],
+        model=LiteLLMFactory.resolve_model(request.model),
+        tools=function_tools,
+        mcp_servers=mcp_servers,
     )
 
 
 async def run_streamed(request: AgentRunRequest) -> AsyncIterator[HarnessEvent]:
-
-    sandbox_dir: Path | None = None
     try:
-        if request.filesystem is not None:
-            sandbox_dir = await mount(request.filesystem)
-            logger.info("Mounted sandbox at {dir}", dir=str(sandbox_dir))
-
-        tool_kwargs = {"sandbox_dir": sandbox_dir} if sandbox_dir else {}
-        tool_objects = resolve_tools(request.tools, **tool_kwargs)
-        agent = build_agent(request, tool_objects=tool_objects)
+        agent = build_agent(request)
 
         logger.info("Starting agent run with model={model}", model=request.model)
 
@@ -76,8 +74,6 @@ async def run_streamed(request: AgentRunRequest) -> AsyncIterator[HarnessEvent]:
 
     finally:
         yield HarnessEvent(event="done", data={})
-        if sandbox_dir is not None:
-            cleanup(sandbox_dir.parent if sandbox_dir.name == "workspace" else sandbox_dir)
 
 
 if __name__ == "__main__":

@@ -50,11 +50,7 @@ def _classify_tool(name: str) -> ToolName | None:
         return None
     if name in {"exec_command", "write_stdin"} or "bash" in name or "shell" in name:
         return "bash"
-    if (
-        name in {"apply_patch", "view_image"}
-        or "file_search" in name
-        or "search_file" in name
-    ):
+    if name in {"apply_patch", "view_image"} or "file_search" in name or "search_file" in name:
         return "file_search"
     if "web_search" in name:
         return "web_search"

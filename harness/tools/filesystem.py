@@ -93,23 +93,27 @@ def _parse_patch(raw: str) -> list[ApplyPatchOperation]:
     while i < len(lines) - 1:
         line = lines[i]
         if line.startswith(_ADD):
-            path = line[len(_ADD):].strip()
+            path = line[len(_ADD) :].strip()
             i += 1
             diff_lines: list[str] = []
             while i < len(lines) - 1 and not _is_header(lines[i]):
                 diff_lines.append(lines[i])
                 i += 1
-            ops.append(ApplyPatchOperation(type="create_file", path=path, diff="\n".join(diff_lines) + "\n"))
+            ops.append(
+                ApplyPatchOperation(
+                    type="create_file", path=path, diff="\n".join(diff_lines) + "\n"
+                )
+            )
         elif line.startswith(_DEL):
-            path = line[len(_DEL):].strip()
+            path = line[len(_DEL) :].strip()
             i += 1
             ops.append(ApplyPatchOperation(type="delete_file", path=path))
         elif line.startswith(_UPD):
-            path = line[len(_UPD):].strip()
+            path = line[len(_UPD) :].strip()
             i += 1
             move_to: str | None = None
             if i < len(lines) - 1 and lines[i].startswith(_MOVE):
-                move_to = lines[i][len(_MOVE):].strip()
+                move_to = lines[i][len(_MOVE) :].strip()
                 i += 1
             diff_lines = []
             while i < len(lines) - 1 and not _is_header(lines[i]):
@@ -133,9 +137,7 @@ def _is_header(line: str) -> bool:
 
 
 @register_tool("filesystem")
-def make_filesystem_tools(
-    filesystem_config: FilesystemConfig | None = None, **_: object
-):
+def make_filesystem_tools(filesystem_config: FilesystemConfig | None = None, **_: object):
     root = filesystem_config.root if filesystem_config else settings.agent_workdir
     workdir = Path(root).resolve()
     editor = LocalApplyPatchEditor(workdir)

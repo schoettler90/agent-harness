@@ -28,6 +28,7 @@ def _ensure_registered() -> None:
     import harness.tools.shell  # noqa: F401
     import harness.tools.skills  # noqa: F401
     import harness.tools.web_search  # noqa: F401  (registers web_search and web_fetch)
+
     _REGISTERED = True
 
 

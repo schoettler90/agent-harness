@@ -13,10 +13,11 @@ from pathlib import Path
 
 os.environ["LOG_LEVEL"] = "CRITICAL"
 
+from loguru import logger as _loguru_logger  # noqa: E402
+
 from harness.agent import AgentRunRequest, run_streamed  # noqa: E402
 from harness.tools.filesystem import FilesystemConfig  # noqa: E402
 from harness.tools.shell import ShellConfig  # noqa: E402
-from loguru import logger as _loguru_logger  # noqa: E402
 
 _loguru_logger.remove()
 
@@ -67,7 +68,7 @@ def _format_args(raw: object) -> str:
     if isinstance(raw, str):
         try:
             parsed = json.loads(raw)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return raw
     else:
         parsed = raw

@@ -22,8 +22,7 @@ def make_web_search_tool(**_: object):
     @function_tool(
         name_override="web_search",
         description_override=(
-            "Search the web via Google Custom Search. "
-            "Requires GOOGLE_API_KEY and GOOGLE_CSE_ID."
+            "Search the web via Google Custom Search. Requires GOOGLE_API_KEY and GOOGLE_CSE_ID."
         ),
     )
     async def web_search(query: str, max_results: int = 5) -> str:
